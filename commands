@@ -1,0 +1,40 @@
+# General docker
+docker ps
+docker rmi -f
+docker kill
+
+docker exec -it [container-id] bash
+
+docker run --rm -i -t [container-id] /bin/bash
+
+docker logs <container_name>
+docker inspect --format '{{ .NetworkSettings.IPAddress }}' <container_name>
+
+# Own images build
+docker build -t epambigdata/java8 .
+docker build -t epambigdata/zookeeper .
+docker build -t epambigdata/kafka .
+
+# Cluster run without Compose
+docker run --rm -p 2181 epambigdata/zookeeper
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -p 9092 -e KAFKA_ADVERTISED_HOSTNAME=192.168.0.12 -e ZOOKEEPER_PORT_2181_TCP=172.17.0.2:2181 epambigdata/kafka
+
+# Cluster run with Compose
+docker-compose up -d
+docker-compose ps
+docker-compose scale kafka=5
+docker-compose down
+
+# Launch instance with Kafka to manage topics
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e ZOOKEEPER=192.168.0.12:32780 -e HOSTIP=192.168.0.12 -i -t epambigdata/kafka /bin/bash
+
+# Topic, consumer, producer
+$KAFKA_HOME/bin/kafka-topics.sh --create --topic topic1 --partitions 1 --zookeeper $ZOOKEEPER --replication-factor 1
+$KAFKA_HOME/bin/kafka-topics.sh --describe --topic topic1 --zookeeper $ZOOKEEPER 
+$KAFKA_HOME/bin/kafka-console-producer.sh --topic=topic1 --broker-list=`broker-list.sh`
+$KAFKA_HOME/bin/kafka-console-consumer.sh --topic=topic1 --zookeeper=$ZOOKEEPER
+
+$KAFKA_HOME/bin/kafka-topics.sh --create --topic topic3 --partitions 3 --zookeeper $ZOOKEEPER --replication-factor 3
+$KAFKA_HOME/bin/kafka-topics.sh --describe --topic topic3 --zookeeper $ZOOKEEPER 
+$KAFKA_HOME/bin/kafka-console-producer.sh --topic=topic3 --broker-list=`get_brokers.sh`
+$KAFKA_HOME/bin/kafka-console-consumer.sh --topic=topic3 --zookeeper=$ZOOKEEPER
